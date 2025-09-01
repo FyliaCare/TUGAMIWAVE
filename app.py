@@ -55,7 +55,10 @@ with colB:
             st.success(f"End amount: {res['end_amount']:.2f} {start}")
         else:
             st.warning("End amount not available.")
-        st.write(f"Gross P&L: {res['pnl_gross']:.2f} {start}  |  Net P&L: {res['pnl_net']:.2f} {start}  |  ROI: {res['roi']:.2%}")
+            if all(k in res for k in ['pnl_gross', 'pnl_net', 'roi']):
+                st.write(f"Gross P&L: {res['pnl_gross']:.2f} {start}  |  Net P&L: {res['pnl_net']:.2f} {start}  |  ROI: {res['roi']:.2%}")
+            else:
+                st.warning("Gross/Net P&L or ROI not available.")
         st.json(res)
 
 # Arbitrage finder
