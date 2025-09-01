@@ -51,7 +51,10 @@ with colA:
 with colB:
     if st.button("Run Simulation", use_container_width=True):
         res = compute_cycle(engine, amt, start, path, include_fees=include_fees)
-        st.success(f"End amount: {res['end_amount']:.2f} {start}")
+        if 'end_amount' in res:
+            st.success(f"End amount: {res['end_amount']:.2f} {start}")
+        else:
+            st.warning("End amount not available.")
         st.write(f"Gross P&L: {res['pnl_gross']:.2f} {start}  |  Net P&L: {res['pnl_net']:.2f} {start}  |  ROI: {res['roi']:.2%}")
         st.json(res)
 
