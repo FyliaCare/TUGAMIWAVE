@@ -1,0 +1,2 @@
+ts,route,start_ccy,amount,end_ccy,end_amount,roi,pnl,notes
+2025-02-01T10:00:00,GHS→INR→MWK→GHS,GHS,10000,GHS,27266.88,1.726688,17266.88,Seed example
