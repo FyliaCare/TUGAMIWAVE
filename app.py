@@ -7,7 +7,7 @@ from src.fx import load_rates, compute_cycle, currency_graph, arbitrage_cycles
 import plotly.express as px
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="TUGAMIWAVE — FX Dashboard", page_icon="🌊", layout="wide")
+st.set_page_config(page_title="TUGAMIWAVE — FX Dashboard", page_icon="🌊", layout="centered")
 # --- Sidebar ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/6/6e/Wave_icon.png", width=80)
@@ -34,26 +34,12 @@ st.title("🌊 TUGAMIWAVE — FX Routing & Arbitrage Dashboard")
 
 # --- Modern KPI Cards ---
 KP = kpis(engine)
-st.markdown("""
-<div style='display:flex;gap:24px;margin-bottom:18px;'>
-    <div style='background:#e3f2fd;border-radius:16px;padding:18px 28px;box-shadow:0 2px 8px #e0e0e0;'>
-        <span style='font-size:1.2em;color:#1976d2'><b>Total Transfers</b></span><br>
-        <span style='font-size:2em;font-weight:bold'>{:,}</span>
-    </div>
-    <div style='background:#c8e6c9;border-radius:16px;padding:18px 28px;box-shadow:0 2px 8px #e0e0e0;'>
-        <span style='font-size:1.2em;color:#388e3c'><b>Realized P&L (GHS)</b></span><br>
-        <span style='font-size:2em;font-weight:bold'>{:.2f}</span>
-    </div>
-    <div style='background:#fff9c4;border-radius:16px;padding:18px 28px;box-shadow:0 2px 8px #e0e0e0;'>
-        <span style='font-size:1.2em;color:#fbc02d'><b>Avg Route ROI</b></span><br>
-        <span style='font-size:2em;font-weight:bold'>{:.1%}</span>
-    </div>
-    <div style='background:#f8bbd0;border-radius:16px;padding:18px 28px;box-shadow:0 2px 8px #e0e0e0;'>
-        <span style='font-size:1.2em;color:#d81b60'><b>Open Exposure (GHS)</b></span><br>
-        <span style='font-size:2em;font-weight:bold'>{:.2f}</span>
-    </div>
-</div>
-""".format(KP['transfers'], KP['realized_pnl_ghs'], KP['avg_roi'], KP['open_exposure_ghs']), unsafe_allow_html=True)
+cols = st.columns(2) if st.experimental_get_query_params().get('mobile') else st.columns(4)
+cols[0].metric("Total Transfers", f"{KP['transfers']:,}")
+cols[1].metric("Realized P&L (GHS)", f"{KP['realized_pnl_ghs']:.2f}")
+if len(cols) > 2:
+    cols[2].metric("Avg Route ROI", f"{KP['avg_roi']:.1%}")
+    cols[3].metric("Open Exposure (GHS)", f"{KP['open_exposure_ghs']:.2f}")
 
 # Balances
 
