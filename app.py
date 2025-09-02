@@ -1,38 +1,42 @@
-import os, math, datetime as dt
+
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from src.config import get_settings
 from src.db import get_engine, ensure_db, load_seed_if_empty, kpis, balances_df, transfers_df
 from src.fx import load_rates, compute_cycle, currency_graph, arbitrage_cycles
-import plotly.express as px
-import plotly.graph_objects as go
+import datetime as dt
 
+# --- Page Config ---
 st.set_page_config(page_title="TUGAMIWAVE — FX Dashboard", page_icon="🌊", layout="centered")
-# --- Sidebar ---
+
+# --- Sidebar Navigation ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/6/6e/Wave_icon.png", width=80)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/6/6e/Wave_icon.png", use_column_width=True)
     st.title("🌊 TUGAMIWAVE FX Dashboard")
-    st.markdown("""
-    <span style='font-size:1.1em;'>Corridor: <b>Malawi ↔ India ↔ Ghana</b></span>
-    """, unsafe_allow_html=True)
+    st.markdown("<span style='font-size:1.1em;'>Corridor: <b>Malawi ↔ India ↔ Ghana</b></span>", unsafe_allow_html=True)
     st.divider()
-    st.button("Refresh Data")
+    if st.button("Refresh Data"):
+        st.experimental_rerun()
     theme = st.selectbox("Theme", ["Light", "Dark"], index=0)
     st.divider()
-    st.markdown("[Rates Page](./01_💱 Rates.py)")
-    st.markdown("[Simulator](./02_🛣️ Routes Simulator.py)")
-    st.markdown("[Arbitrage](./03_🧭 Arbitrage.py)")
-    st.markdown("[Ledger](./05_📒 Ledger.py)")
-    st.markdown("[Settings](./07_⚙️ Settings.py)")
+    st.page_link("pages/01_💱 Rates.py", label="💱 Rates")
+    st.page_link("pages/02_🛣️ Routes Simulator.py", label="🛣️ Simulator")
+    st.page_link("pages/03_🧭 Arbitrage.py", label="🧭 Arbitrage")
+    st.page_link("pages/05_📒 Ledger.py", label="📒 Ledger")
+    st.page_link("pages/07_⚙️ Settings.py", label="⚙️ Settings")
 
+# --- DB Setup ---
 S = get_settings()
 engine = get_engine(S.DB_URL)
 ensure_db(engine)
 load_seed_if_empty(engine)
 
+# --- Title ---
 st.title("🌊 TUGAMIWAVE — FX Routing & Arbitrage Dashboard")
 
-# --- Modern KPI Cards ---
+# --- KPI Cards ---
 KP = kpis(engine)
 cols = st.columns(2) if st.query_params.get('mobile') else st.columns(4)
 cols[0].metric("Total Transfers", f"{KP['transfers']:,}")
@@ -41,28 +45,60 @@ if len(cols) > 2:
     cols[2].metric("Avg Route ROI", f"{KP['avg_roi']:.1%}")
     cols[3].metric("Open Exposure (GHS)", f"{KP['open_exposure_ghs']:.2f}")
 
-# Balances
-
-# --- Interactive Balances Card ---
+# --- Balances Section ---
 st.subheader("Balances by Currency / Bank")
-bal = balances_df(engine)
-st.dataframe(bal, use_container_width=True)
-if not bal.empty:
-    bal_chart = px.bar(bal, x="bank", y="amount", color="currency", barmode="group", title="Balances Overview")
-    st.plotly_chart(bal_chart, use_container_width=True)
+try:
+    bal = balances_df(engine)
+    st.dataframe(bal, use_container_width=True)
+    if not bal.empty:
+        bal_chart = px.bar(bal, x="bank", y="amount", color="currency", barmode="group", title="Balances Overview")
+        st.plotly_chart(bal_chart, use_container_width=True)
+except Exception as e:
+    st.error(f"Error loading balances: {e}")
 
-# Recent transfers
-
-# --- Recent Transfers with Filters ---
+# --- Recent Transfers Section ---
 st.subheader("Recent Transfers")
-tx = transfers_df(engine)
-if not tx.empty:
-    tx['ts'] = pd.to_datetime(tx['ts'])
-    date_filter = st.date_input("Filter by date", value=tx['ts'].max().date())
-    tx_filtered = tx[tx['ts'].dt.date == date_filter]
-    st.dataframe(tx_filtered.tail(20), use_container_width=True)
-    tx_chart = px.scatter(tx_filtered, x="ts", y="amount", color="start_ccy", hover_data=["route"], title="Transfer Amounts by Date")
-    st.plotly_chart(tx_chart, use_container_width=True)
+try:
+    tx = transfers_df(engine)
+    if not tx.empty:
+        tx['ts'] = pd.to_datetime(tx['ts'])
+        date_filter = st.date_input("Filter by date", value=tx['ts'].max().date())
+        tx_filtered = tx[tx['ts'].dt.date == date_filter]
+        st.dataframe(tx_filtered.tail(20), use_container_width=True)
+        tx_chart = px.scatter(tx_filtered, x="ts", y="amount", color="start_ccy", hover_data=["route"], title="Transfer Amounts by Date")
+        st.plotly_chart(tx_chart, use_container_width=True)
+    else:
+        st.info("No transfers found.")
+except Exception as e:
+    st.error(f"Error loading transfers: {e}")
+
+# --- Rates Overview Section ---
+st.subheader("Live FX Rates Snapshot")
+try:
+    rates_df = load_rates(engine)
+    rates_df['as_of'] = pd.to_datetime(rates_df['as_of'])
+    st.dataframe(rates_df, use_container_width=True)
+    if not rates_df.empty:
+        fig = px.line(rates_df, x="as_of", y="rate", color="pair", title="FX Rate Trends")
+        st.plotly_chart(fig, use_container_width=True)
+except Exception as e:
+    st.error(f"Error loading rates: {e}")
+
+# --- Arbitrage Opportunities Section ---
+st.subheader("Arbitrage Opportunities")
+try:
+    cycles = arbitrage_cycles(engine)
+    if cycles:
+        for cycle in cycles:
+            st.markdown(f"- {cycle}")
+    else:
+        st.info("No arbitrage cycles detected.")
+except Exception as e:
+    st.error(f"Error loading arbitrage cycles: {e}")
+
+# --- Footer ---
+st.markdown("---")
+st.caption("TUGAMIWAVE FX Dashboard • Powered by Streamlit • © 2025 FyliaCare")
 
 # Rates chart
 
