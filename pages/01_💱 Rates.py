@@ -106,6 +106,33 @@ calc_df = pd.DataFrame({
 st.dataframe(calc_df, use_container_width=True)
 
 # Make these rates available for simulator integration (e.g., via session state)
+
+# --- Save Rates Button & Logic ---
+def save_custom_rate(pair, bank_rate, market_rate, binance_rate, engine):
+    import sqlalchemy as sa
+    from datetime import datetime
+    meta = sa.MetaData()
+    rates_table = sa.Table('rates', meta, autoload_with=engine)
+    # Insert or update the custom rate for the selected pair
+    with engine.begin() as conn:
+        # Remove any previous custom rate for this pair with today's date
+        today = datetime.now().date()
+        conn.execute(rates_table.delete().where(
+            (rates_table.c.pair == pair) & (rates_table.c.as_of == today)
+        ))
+        # Insert new rates
+        if bank_rate is not None:
+            conn.execute(rates_table.insert().values(pair=pair, rate=bank_rate, as_of=today, source='custom_bank'))
+        if market_rate is not None:
+            conn.execute(rates_table.insert().values(pair=pair, rate=market_rate, as_of=today, source='custom_market'))
+        if binance_rate is not None:
+            conn.execute(rates_table.insert().values(pair=pair, rate=binance_rate, as_of=today, source='custom_binance'))
+
+if st.button("Save Rates"):
+    save_custom_rate(comp_pair, bank_rate, market_rate, binance_rate, engine)
+    st.success("Rates saved for simulation and future use.")
+
+# Store rates in session for simulator integration
 st.session_state['simulator_rates'] = {
     'pair': comp_pair,
     'bank_rate': bank_rate,

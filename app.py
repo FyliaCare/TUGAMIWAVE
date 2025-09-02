@@ -34,7 +34,7 @@ st.title("🌊 TUGAMIWAVE — FX Routing & Arbitrage Dashboard")
 
 # --- Modern KPI Cards ---
 KP = kpis(engine)
-cols = st.columns(2) if st.experimental_get_query_params().get('mobile') else st.columns(4)
+cols = st.columns(2) if st.query_params.get('mobile') else st.columns(4)
 cols[0].metric("Total Transfers", f"{KP['transfers']:,}")
 cols[1].metric("Realized P&L (GHS)", f"{KP['realized_pnl_ghs']:.2f}")
 if len(cols) > 2:
